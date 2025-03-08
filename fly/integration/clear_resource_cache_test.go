@@ -120,6 +120,46 @@ var _ = Describe("Fly CLI", func() {
 				})
 			})
 
+			Context("when the resource exist and team is specified", func() {
+				var teamName = "custom-team"
+				var expectedURL = fmt.Sprintf("/api/v1/teams/%s/pipelines/some-pipeline/resources/some-resource/cache", teamName)
+
+				JustBeforeEach(func() {
+					atcServer.AppendHandlers(
+						ghttp.CombineHandlers(
+							ghttp.VerifyRequest("GET", fmt.Sprintf("/api/v1/teams/%s", teamName)),
+							ghttp.RespondWithJSONEncoded(http.StatusOK, atc.Team{
+								Name: teamName,
+							}),
+						),
+						ghttp.CombineHandlers(
+							ghttp.VerifyRequest("DELETE", expectedURL, strings.Join(expectedQueryParams, "&")),
+							ghttp.RespondWithJSONEncoded(http.StatusOK, atc.ClearResourceCacheResponse{CachesRemoved: 1}),
+						),
+					)
+				})
+
+				BeforeEach(func() {
+					args = append(args, "-r", "some-pipeline/some-resource", "--team", teamName)
+				})
+
+				It("succeeds with one deletion", func() {
+					Expect(func() {
+						yes()
+						Eventually(sess).Should(gexec.Exit(0))
+						Eventually(sess).Should(gbytes.Say("1 caches removed"))
+					}).To(Change(func() int {
+						return len(atcServer.ReceivedRequests())
+					}).By(3))
+				})
+
+				It("bails out if the user negate the command", func() {
+					no()
+					Eventually(sess).Should(gbytes.Say(`bailing out`))
+					Eventually(sess).Should(gexec.Exit(0))
+				})
+			})
+
 			Context("when the resource does not exist", func() {
 				var expectedURL = "/api/v1/teams/main/pipelines/some-pipeline/resources/no-existing-resource/cache"
 
