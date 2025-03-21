@@ -278,7 +278,7 @@ func saveResourceVersion(tx Tx, rcsID int, version atc.Version, metadata Resourc
 	err = tx.QueryRow(`
 		INSERT INTO resource_config_versions (resource_config_scope_id, version, version_sha256, metadata, span_context)
 		SELECT $1, $2, encode(digest($3, 'sha256'), 'hex'), $4, $5
-		ON CONFLICT (resource_config_scope_id, version)
+		ON CONFLICT (resource_config_scope_id, version_sha256)
 		DO UPDATE SET metadata = COALESCE(NULLIF(excluded.metadata, 'null'::jsonb), resource_config_versions.metadata)
 		RETURNING check_order
 		`, rcsID, string(versionJSON), string(versionJSON), string(metadataJSON), string(spanContextJSON)).Scan(&checkOrder)
