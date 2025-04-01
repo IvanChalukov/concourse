@@ -337,7 +337,6 @@ var seccomp = &specs.LinuxSeccomp{
 		AllowSyscall("utime"),
 		AllowSyscall("utimensat"),
 		AllowSyscall("utimes"),
-		AllowSyscall("utimes"),
 		AllowSyscall("vfork"),
 		AllowSyscall("vmsplice"),
 		AllowSyscall("wait4"),
@@ -356,6 +355,7 @@ var seccomp = &specs.LinuxSeccomp{
 				Op:       specs.OpMaskedEqual,
 			},
 		),
+		AllowSyscall("clone3"),
 	},
 }
 
