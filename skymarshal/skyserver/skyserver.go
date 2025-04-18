@@ -15,8 +15,8 @@ import (
 
 	"code.cloudfoundry.org/lager/v3"
 	"github.com/concourse/concourse/skymarshal/token"
-	"golang.org/x/oauth2"
 	"github.com/go-jose/go-jose/v3/jwt"
+	"golang.org/x/oauth2"
 )
 
 type SkyConfig struct {
@@ -97,19 +97,25 @@ func (s *SkyServer) NewLogin(w http.ResponseWriter, r *http.Request) {
 		redirectURI = "/"
 	}
 
+	fmt.Println("redirectURI", redirectURI)
+	fmt.Println("stateToken", r.FormValue("state"))
+
 	stateToken := encode(stateToken{
 		RedirectURI: redirectURI,
 		Entropy:     randomString(),
 	})
 
-	err := s.config.TokenMiddleware.SetStateToken(w, stateToken, time.Now().Add(time.Hour))
+	stateID := randomString()
+	stateCookieName := "state-" + stateID
+
+	err := s.config.TokenMiddleware.SetNamedStateToken(w, stateCookieName, stateToken, time.Now().Add(time.Hour))
 	if err != nil {
 		logger.Error("invalid-state-token", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	authCodeURL := s.config.OAuthConfig.AuthCodeURL(stateToken, oauth2.AccessTypeOffline)
+	authCodeURL := s.config.OAuthConfig.AuthCodeURL(stateID, oauth2.AccessTypeOffline)
 
 	http.Redirect(w, r, authCodeURL, http.StatusTemporaryRedirect)
 }
@@ -124,20 +130,38 @@ func (s *SkyServer) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stateToken := s.config.TokenMiddleware.GetStateToken(r)
-	if stateToken == "" {
+	stateID := r.FormValue("state")
+	cookieName := "state-" + stateID
+
+	stateTokenEncoded := s.config.TokenMiddleware.GetNamedStateToken(r, cookieName)
+	if stateTokenEncoded == "" {
 		logger.Error("failed-with-invalid-state-token", errors.New("state token is empty"))
 		http.Error(w, "invalid state token", http.StatusBadRequest)
 		return
 	}
 
-	if stateToken != r.FormValue("state") {
-		logger.Error("failed-with-unexpected-state-token", errors.New("state token does not match"))
-		http.Error(w, "unexpected state token", http.StatusBadRequest)
+	stateToken := decode(stateTokenEncoded)
+
+	if stateToken.RedirectURI == "" || stateToken.Entropy == "" {
+		logger.Error("invalid-state-token-content", errors.New("missing fields in state token"))
+		http.Error(w, "Malformed state token", http.StatusBadRequest)
 		return
 	}
+	// stateToken := s.config.TokenMiddleware.GetStateToken(r)
+	// if stateToken == "" {
+	// 	logger.Error("failed-with-invalid-state-token", errors.New("state token is empty"))
+	// 	http.Error(w, "invalid state token", http.StatusBadRequest)
+	// 	return
+	// }
 
-	s.config.TokenMiddleware.UnsetStateToken(w)
+	// if stateToken != r.FormValue("state") {
+	// 	logger.Error("failed-with-unexpected-state-token", errors.New("state token does not match"))
+	// 	http.Error(w, "unexpected state token", http.StatusBadRequest)
+	// 	return
+	// }
+
+	// s.config.TokenMiddleware.UnsetStateToken(w)
+	s.config.TokenMiddleware.UnsetNamedStateToken(w, cookieName)
 
 	ctx := context.WithValue(r.Context(), oauth2.HTTPClient, s.config.HTTPClient)
 
@@ -154,7 +178,7 @@ func (s *SkyServer) Callback(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	s.Redirect(w, r, dexToken, decode(stateToken).RedirectURI)
+	s.Redirect(w, r, dexToken, stateToken.RedirectURI)
 }
 
 func (s *SkyServer) Redirect(w http.ResponseWriter, r *http.Request, oauth2Token *oauth2.Token, redirectURI string) {

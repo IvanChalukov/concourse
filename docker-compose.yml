@@ -24,7 +24,7 @@ services:
 
   web:
     build: .
-    image: concourse/concourse:local
+    image: concourse/concourse:local1
     command: web
     depends_on:
       db:
@@ -53,10 +53,30 @@ services:
       CONCOURSE_ENABLE_ACROSS_STEP: "true"
       CONCOURSE_ENABLE_CACHE_STREAMED_VOLUMES: "true"
       CONCOURSE_ENABLE_RESOURCE_CAUSALITY: "true"
+      CONCOURSE_AUTH_DURATION: 10m
+      CONCOURSE_GC_FAILED_GRACE_PERIOD: 1m
+      # CONCOURSE_MAIN_TEAM_SAML_USER: user1@example.com
+      CONCOURSE_MAIN_TEAM_SAML_GROUP: group2
+
+      CONCOURSE_SAML_SSO_URL: http://localhost:8000/simplesaml/saml2/idp/SSOService.php
+      CONCOURSE_SAML_ENTITY_ISSUER: concourse
+      CONCOURSE_SAML_USERNAME_ATTR: email
+      CONCOURSE_SAML_GROUPS_ATTR: eduPersonAffiliation
+      CONCOURSE_SAML_SKIP_SSL_VALIDATION: "true"
+      # still need to specify file even if we skip tls
+      CONCOURSE_SAML_CA_CERT: /bin/sh
+
+  saml:
+    image: kristophjunge/test-saml-idp
+    ports:
+    - 8000:8080
+    environment:
+      SIMPLESAMLPHP_SP_ENTITY_ID: concourse
+      SIMPLESAMLPHP_SP_ASSERTION_CONSUMER_SERVICE: http://localhost:8080/sky/issuer/callback
 
   worker:
     build: .
-    image: concourse/concourse:local
+    image: concourse/concourse:local1
     command: worker
     privileged: true
     cgroup: host

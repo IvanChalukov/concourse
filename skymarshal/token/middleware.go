@@ -18,6 +18,10 @@ type Middleware interface {
 	SetStateToken(http.ResponseWriter, string, time.Time) error
 	UnsetStateToken(http.ResponseWriter)
 	GetStateToken(*http.Request) string
+
+	SetNamedStateToken(http.ResponseWriter, string, string, time.Time) error
+	UnsetNamedStateToken(http.ResponseWriter, string)
+	GetNamedStateToken(*http.Request, string) string
 }
 
 type middleware struct {
@@ -105,6 +109,7 @@ func (m *middleware) UnsetStateToken(w http.ResponseWriter) {
 }
 
 func (m *middleware) SetStateToken(w http.ResponseWriter, stateToken string, expiry time.Time) error {
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     stateCookieName,
 		Value:    stateToken,
@@ -123,4 +128,34 @@ func (m *middleware) GetStateToken(r *http.Request) string {
 		return ""
 	}
 	return cookie.Value
+}
+
+func (m *middleware) SetNamedStateToken(w http.ResponseWriter, cookieName string, stateToken string, expiry time.Time) error {
+	http.SetCookie(w, &http.Cookie{
+		Name:     stateCookieName + cookieName,
+		Value:    stateToken,
+		Path:     "/",
+		Expires:  expiry,
+		Secure:   m.secureCookies,
+		HttpOnly: true,
+	})
+	return nil
+}
+
+func (m *middleware) GetNamedStateToken(r *http.Request, cookieName string) string {
+	cookie, err := r.Cookie(stateCookieName + cookieName)
+	if err != nil {
+		return ""
+	}
+	return cookie.Value
+}
+
+func (m *middleware) UnsetNamedStateToken(w http.ResponseWriter, cookieName string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     stateCookieName + cookieName,
+		Path:     "/",
+		MaxAge:   -1,
+		Secure:   m.secureCookies,
+		HttpOnly: true,
+	})
 }
