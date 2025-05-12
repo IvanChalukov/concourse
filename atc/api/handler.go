@@ -160,6 +160,7 @@ func NewHandler(
 		atc.HidePipeline:              pipelineHandlerFactory.HandlerFor(pipelineServer.HidePipeline),
 		atc.GetVersionsDB:             pipelineHandlerFactory.HandlerFor(pipelineServer.GetVersionsDB),
 		atc.RenamePipeline:            teamHandlerFactory.HandlerFor(pipelineServer.RenamePipeline),
+		atc.ChownPipeline:             teamHandlerFactory.HandlerFor(pipelineServer.ChownPipeline),
 		atc.ListPipelineBuilds:        pipelineHandlerFactory.HandlerFor(pipelineServer.ListPipelineBuilds),
 		atc.CreatePipelineBuild:       pipelineHandlerFactory.HandlerFor(pipelineServer.CreateBuild),
 		atc.PipelineBadge:             pipelineHandlerFactory.HandlerFor(pipelineServer.PipelineBadge),

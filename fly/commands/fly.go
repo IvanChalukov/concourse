@@ -57,6 +57,7 @@ type FlyCommand struct {
 	ExposePipeline            ExposePipelineCommand          `command:"expose-pipeline"           alias:"ep"   description:"Make a pipeline publicly viewable"`
 	HidePipeline              HidePipelineCommand            `command:"hide-pipeline"             alias:"hp"   description:"Hide a pipeline from the public"`
 	RenamePipeline            RenamePipelineCommand          `command:"rename-pipeline"           alias:"rp"   description:"Rename a pipeline"`
+	ChownPipeline             RenamePipelineCommand          `command:"chown-pipeline"            alias:"cp"   description:"Change team owner of a pipeline"`
 	ValidatePipeline          ValidatePipelineCommand        `command:"validate-pipeline"         alias:"vp"   description:"Validate a pipeline config"`
 	FormatPipeline            FormatPipelineCommand          `command:"format-pipeline"           alias:"fp"   description:"Format a pipeline config"`
 	OrderPipelines            OrderPipelinesCommand          `command:"order-pipelines"           alias:"op"   description:"Orders pipelines"`

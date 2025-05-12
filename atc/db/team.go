@@ -48,6 +48,7 @@ type Team interface {
 		initiallyPaused bool,
 	) (Pipeline, bool, error)
 	RenamePipeline(oldName string, newName string) (bool, error)
+	ChownPipeline(pipelineName string, newTeamId int) (bool, error)
 
 	Pipeline(pipelineRef atc.PipelineRef) (Pipeline, bool, error)
 	Pipelines() ([]Pipeline, error)
@@ -672,6 +673,84 @@ func (t *team) RenamePipeline(oldName, newName string) (bool, error) {
 		return false, err
 	}
 	return rowsAffected > 0, nil
+}
+
+func (t *team) ChownPipeline(pipelineName string, newTeamId int) (bool, error) {
+	var pipelineID int
+	err := psql.Select("id").
+		From("pipelines").
+		Where(sq.Eq{
+			"team_id": t.id,
+			"name":    pipelineName,
+		}).
+		RunWith(t.conn).
+		QueryRow().
+		Scan(&pipelineID)
+	if err == sql.ErrNoRows {
+		return false, nil
+	} else if err != nil {
+		return false, fmt.Errorf("selecting pipeline id: %w", err)
+	}
+
+	_, err = psql.Update("pipelines").
+		Set("team_id", newTeamId).
+		Where(sq.Eq{"id": pipelineID}).
+		RunWith(t.conn).
+		Exec()
+	if err != nil {
+		return false, fmt.Errorf("updating pipeline: %w", err)
+	}
+
+	_, err = psql.Update("builds").
+		Set("team_id", newTeamId).
+		Where(sq.And{
+			sq.NotEq{"team_id": nil},
+			sq.Eq{"pipeline_id": pipelineID},
+		}).
+		RunWith(t.conn).
+		Exec()
+	if err != nil {
+		return false, fmt.Errorf("updating builds: %w", err)
+	}
+
+	rows, err := psql.Update("containers").
+		Set("team_id", newTeamId).
+		Where(sq.And{
+			sq.NotEq{"team_id": nil},
+			sq.Eq{"meta_pipeline_id": pipelineID},
+		}).
+		Suffix("RETURNING id").
+		RunWith(t.conn).
+		Query()
+	if err != nil {
+		return false, fmt.Errorf("updating containers: %w", err)
+	}
+	defer rows.Close()
+
+	var containerIDs []int
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			return false, fmt.Errorf("scanning container id: %w", err)
+		}
+		containerIDs = append(containerIDs, id)
+	}
+
+	if len(containerIDs) > 0 {
+		_, err = psql.Update("volumes").
+			Set("team_id", newTeamId).
+			Where(sq.And{
+				sq.NotEq{"team_id": nil},
+				sq.Eq{"container_id": containerIDs},
+			}).
+			RunWith(t.conn).
+			Exec()
+		if err != nil {
+			return false, fmt.Errorf("updating volumes: %w", err)
+		}
+	}
+
+	return true, nil
 }
 
 func (t *team) Pipeline(pipelineRef atc.PipelineRef) (Pipeline, bool, error) {

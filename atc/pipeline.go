@@ -39,6 +39,10 @@ type RenameRequest struct {
 	NewName string `json:"name"`
 }
 
+type ChownRequest struct {
+	NewTeam string `json:"new_team"`
+}
+
 type InstanceVars map[string]any
 
 func (iv InstanceVars) String() string {

@@ -103,6 +103,7 @@ func (a *auditor) ValidateAction(action string) bool {
 		atc.ExposePipeline,
 		atc.HidePipeline,
 		atc.RenamePipeline,
+		atc.ChownPipeline,
 		atc.ListPipelineBuilds,
 		atc.CreatePipelineBuild,
 		atc.PipelineBadge:

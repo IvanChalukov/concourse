@@ -71,6 +71,7 @@ var DefaultRoles = map[string]string{
 	atc.ExposePipeline:                 MemberRole,
 	atc.HidePipeline:                   MemberRole,
 	atc.RenamePipeline:                 MemberRole,
+	atc.ChownPipeline:                  OwnerRole,
 	atc.ListPipelineBuilds:             ViewerRole,
 	atc.CreatePipelineBuild:            MemberRole,
 	atc.PipelineBadge:                  ViewerRole,
