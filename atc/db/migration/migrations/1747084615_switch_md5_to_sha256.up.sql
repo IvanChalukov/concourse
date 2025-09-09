@@ -58,7 +58,7 @@ WITH json_string_cte AS (
             '{}'
         ) AS json_string
     FROM resource_config_versions rcv
-    JOIN jsonb_each_text(rcv.version::jsonb) AS kv ON true
+    LEFT JOIN jsonb_each_text(rcv.version::jsonb) AS kv ON true
     WHERE jsonb_typeof(rcv.version::jsonb) = 'object'
     GROUP BY rcv.id, rcv.version_sha256
 ),

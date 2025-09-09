@@ -51,11 +51,11 @@ WITH json_string_cte AS (
         rcv.id,
         rcv.version_md5 AS old_version_md5,
         COALESCE(
-            '{' || string_agg('"' || kv.key || '":"' || kv.value || '"', ',' ORDER BY kv.key) || '}'::jsonb,
+            '{' || string_agg('"' || kv.key || '":"' || kv.value || '"', ',' ORDER BY kv.key) || '}',
             '{}'
         ) AS json_string
     FROM resource_config_versions rcv
-    JOIN jsonb_each_text(rcv.version::jsonb) AS kv ON true
+    LEFT JOIN jsonb_each_text(rcv.version::jsonb) AS kv ON true
     WHERE jsonb_typeof(rcv.version::jsonb) = 'object'
     GROUP BY rcv.id, rcv.version_md5
 ),
