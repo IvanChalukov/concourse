@@ -53,7 +53,10 @@ WITH json_string_cte AS (
     SELECT 
         rcv.id,
         rcv.version_sha256 AS old_version_sha256,
-        '{' || string_agg('"' || kv.key || '":"' || kv.value || '"', ',' ORDER BY kv.key) || '}' AS json_string
+        COALESCE(
+            '{' || string_agg('"' || kv.key || '":"' || kv.value || '"', ',' ORDER BY kv.key) || '}',
+            '{}'
+        ) AS json_string
     FROM resource_config_versions rcv
     JOIN jsonb_each_text(rcv.version::jsonb) AS kv ON true
     WHERE jsonb_typeof(rcv.version::jsonb) = 'object'
