@@ -3,22 +3,40 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Rename columns from version_md5 to version_sha256
 ALTER TABLE resource_config_versions
-RENAME COLUMN version_md5 TO version_sha256;
+ADD COLUMN version_sha256 TEXT;
+
+ALTER TABLE resource_config_versions
+ALTER COLUMN version_md5 DROP NOT NULL;
 
 ALTER TABLE build_resource_config_version_inputs
-RENAME COLUMN version_md5 TO version_sha256;
+ADD COLUMN version_sha256 TEXT;
+
+ALTER TABLE build_resource_config_version_inputs
+ALTER COLUMN version_md5 DROP NOT NULL;
 
 ALTER TABLE build_resource_config_version_outputs
-RENAME COLUMN version_md5 TO version_sha256;
+ADD COLUMN version_sha256 TEXT;
+
+ALTER TABLE build_resource_config_version_outputs
+ALTER COLUMN version_md5 DROP NOT NULL;
 
 ALTER TABLE next_build_inputs
-RENAME COLUMN version_md5 TO version_sha256;
+ADD COLUMN version_sha256 TEXT;
+
+ALTER TABLE next_build_inputs
+ALTER COLUMN version_md5 DROP NOT NULL;
 
 ALTER TABLE resource_caches
-RENAME COLUMN version_md5 TO version_sha256;
+ADD COLUMN version_sha256 TEXT;
+
+ALTER TABLE resource_caches
+ALTER COLUMN version_md5 DROP NOT NULL;
 
 ALTER TABLE resource_disabled_versions
-RENAME COLUMN version_md5 TO version_sha256;
+ADD COLUMN version_sha256 TEXT;
+
+ALTER TABLE resource_disabled_versions
+ALTER COLUMN version_md5 DROP NOT NULL;
 
 --- Drop Indexes
 -- resource_config_versions
@@ -52,7 +70,7 @@ DROP INDEX IF EXISTS next_build_inputs_job_id;
 WITH json_string_cte AS (
     SELECT 
         rcv.id,
-        rcv.version_sha256 AS old_version_sha256,
+        rcv.version_md5 AS old_version_sha256,
         COALESCE(
             '{' || string_agg('"' || kv.key || '":"' || kv.value || '"', ',' ORDER BY kv.key) || '}',
             '{}'
@@ -60,7 +78,7 @@ WITH json_string_cte AS (
     FROM resource_config_versions rcv
     LEFT JOIN jsonb_each_text(rcv.version::jsonb) AS kv ON true
     WHERE jsonb_typeof(rcv.version::jsonb) = 'object'
-    GROUP BY rcv.id, rcv.version_sha256
+    GROUP BY rcv.id, rcv.version_md5
 ),
 hashed_json_string_cte AS (
     SELECT 
@@ -80,31 +98,31 @@ update_resource_disabled_versions AS (
     UPDATE resource_disabled_versions rdv
     SET version_sha256 = hjs.new_version_sha256
     FROM hashed_json_string_cte hjs
-    WHERE rdv.version_sha256 = hjs.old_version_sha256
+    WHERE rdv.version_md5 = hjs.old_version_sha256
 ),
 update_build_resource_config_version_inputs AS (
     UPDATE build_resource_config_version_inputs bri
     SET version_sha256 = hjs.new_version_sha256
     FROM hashed_json_string_cte hjs
-    WHERE bri.version_sha256 = hjs.old_version_sha256
+    WHERE bri.version_md5 = hjs.old_version_sha256
 ),
 update_build_resource_config_version_outputs AS (
     UPDATE build_resource_config_version_outputs bro
     SET version_sha256 = hjs.new_version_sha256
     FROM hashed_json_string_cte hjs
-    WHERE bro.version_sha256 = hjs.old_version_sha256
+    WHERE bro.version_md5 = hjs.old_version_sha256
 ),
 update_resource_caches AS (
     UPDATE resource_caches rc
     SET version_sha256 = hjs.new_version_sha256
     FROM hashed_json_string_cte hjs
-    WHERE rc.version_sha256 = hjs.old_version_sha256
+    WHERE rc.version_md5 = hjs.old_version_sha256
 )
 
 UPDATE next_build_inputs nbi
 SET version_sha256 = hjs.new_version_sha256
 FROM hashed_json_string_cte hjs
-WHERE nbi.version_sha256 = hjs.old_version_sha256;
+WHERE nbi.version_md5 = hjs.old_version_sha256;
 
 --- Recreate indexes
 -- resource_config_versions
