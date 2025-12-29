@@ -200,12 +200,6 @@ func (versions VersionsDB) SuccessfulBuildOutputs(ctx context.Context, buildID i
 	algorithmOutputs := []AlgorithmVersion{}
 	for _, outputs := range byResourceID {
 		for _, version := range outputs.Versions {
-			if len(version) == 32 {
-				version, err = versions.lookupVersionBySHA256(ctx, buildID)
-				if err != nil {
-					return nil, err
-				}
-			}
 			algorithmOutputs = append(algorithmOutputs, AlgorithmVersion{
 				ResourceID: outputs.ResourceID,
 				Version:    ResourceVersion(version),
@@ -583,23 +577,6 @@ func (versions VersionsDB) latestVersionOfResource(ctx context.Context, tx Tx, r
 	}
 
 	return version, true, nil
-}
-
-func (versions VersionsDB) lookupVersionBySHA256(ctx context.Context, buildID int) (string, error) {
-	var versionSHA256 string
-	err := psql.Select("brcv.version_sha256").
-		From("build_resource_config_version_inputs brcv").
-		Where(sq.Eq{
-			"brcv.build_id": buildID,
-		}).
-		RunWith(versions.conn).
-		QueryRowContext(ctx).
-		Scan(&versionSHA256)
-	if err != nil {
-		return "", err
-	}
-
-	return versionSHA256, nil
 }
 
 func (versions VersionsDB) migrateSingle(ctx context.Context, buildID int) (string, error) {

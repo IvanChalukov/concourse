@@ -1423,14 +1423,14 @@ func (b *build) AdoptInputsAndPipes() ([]BuildInput, bool, error) {
 
 	for inputName, input := range inputs {
 		var versionBlob string
-
 		err = psql.Select("v.version").
 			From("resource_config_versions v").
 			Join("resources r ON r.resource_config_scope_id = v.resource_config_scope_id").
-			Where(sq.Eq{
-				"v.version_sha256": input.Input.Version,
-				"r.id":             input.Input.ResourceID,
+			Where(sq.Or{
+				sq.Eq{"v.version_sha256": input.Input.Version},
+				sq.Eq{"v.version_md5": input.Input.Version},
 			}).
+			Where(sq.Eq{"r.id": input.Input.ResourceID}).
 			RunWith(tx).
 			QueryRow().
 			Scan(&versionBlob)
@@ -1584,9 +1584,12 @@ func (b *build) AdoptRerunInputsAndPipes() ([]BuildInput, bool, error) {
 		err = psql.Select("v.version").
 			From("resource_config_versions v").
 			Join("resources r ON r.resource_config_scope_id = v.resource_config_scope_id").
+			Where(sq.Or{
+				sq.Eq{"v.version_sha256": input.Input.Version},
+				sq.Eq{"v.version_md5": input.Input.Version},
+			}).
 			Where(sq.Eq{
-				"v.version_sha256": input.Input.Version,
-				"r.id":             input.Input.ResourceID,
+				"r.id": input.Input.ResourceID,
 			}).
 			RunWith(tx).
 			QueryRow().
